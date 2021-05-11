@@ -107,38 +107,41 @@ async def create_food_db_entry(food_submitted: FoodDataIn, current_user: User = 
 
 @router.get("/api/foods/{food_id}", response_model=FoodData, status_code = status.HTTP_200_OK)
 async def read_foods(food_id:int, current_user: User = Depends(get_current_active_user)):
-    result = engine.execute('SELECT * FROM food_data_masterlist  WHERE id = ' + str(food_id))
+
+    query = "SELECT * FROM food_data_masterlist  WHERE id = :food_id"
     if not database.is_connected:
         await database.connect()
-    rows = result.fetchall()
-    return rows[0]
+
+    row = await database.fetch_one(query=query, values = {'food_id':food_id})
+    
+    return row
 
 # need to get this working
 @router.patch("/api/foods/{food_id}", response_model=FoodData, status_code = status.HTTP_200_OK)
 async def patch_foods(food_id:int, new_attributes: dict, current_user: User = Depends(get_current_active_user)):
 
-    # Get old item
-    result = engine.execute('SELECT * FROM food_data_masterlist WHERE id = ' + str(food_id))
     if not database.is_connected:
         await database.connect()
-    rows = result.fetchall()
-    stored_item_data = rows[0]
+
+    # Get old item
+    query = 'SELECT * FROM food_data_masterlist WHERE id =:food_id '
+    row = await database.fetch_one(query=query, values = {'food_id': food_id})
+
+    if 'id' in new_attributes:
+        new_attributes.pop('id')
+
+    stored_item_data = row
     stored_item_model = FoodData(**stored_item_data)
     update_data = stored_item_model.copy(update = new_attributes)
 
+    # update back into database
+    query = food_data_masterlist.update().where(food_data_masterlist.c.id == food_id).values(update_data.__dict__)
+    await database.execute(query)
 
-    # Save new one
-    print(update_data)
+    query = "SELECT * FROM food_data_masterlist  WHERE id = :food_id"
+    row = await database.fetch_one(query=query, values = {'food_id':food_id})
 
-    # Need to save the new object to the database properly
-    result = engine.execute('SELECT * FROM food_data_masterlist WHERE id = ' + str(food_id))
-    rows = result.fetchall()
-
-    # non working lines
-    #database.query(food_data_masterlist).filter(id=food_id).update(update_data)
-    #database.commit()
-    
-    return rows[0]
+    return row
 
 
 @router.get("/api/tracking", response_model=List[TrackingData], status_code = status.HTTP_200_OK)
@@ -147,14 +150,9 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
     if not database.is_connected:
         await database.connect()    
 
-    result = engine.execute('SELECT * FROM tracking  WHERE user_id = ' + str(current_user.id))
+    query = "SELECT * FROM tracking  WHERE user_id = :user_id"
+    rows = await database.fetch_all(query=query, values={"user_id": current_user.id})
 
-    rows = result.fetchall()
-    print(rows)     
-    
-    # query = tracking.select().where(tracking.c.user_id == current_user.id).offset(skip).limit(take)
-    # result = engine.execute('SELECT * FROM person WHERE id >= :id', id=3)
-    #return await database.fetch_all(query)
     return(rows)
 
 @router.get("/api/trackingmerged", response_model=List[TrackingDataMerged], status_code = status.HTTP_200_OK)
@@ -163,13 +161,12 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
     if not database.is_connected:
         await database.connect()    
 
-    result = engine.execute('''SELECT tracking.id, tracking.user_id, tracking.food_id, tracking.quantity, 
+    query = '''SELECT tracking.id, tracking.user_id, tracking.food_id, tracking.quantity, 
     tracking.date, food_data_masterlist.name, food_data_masterlist.calories, food_data_masterlist.protein, 
     food_data_masterlist.carbs, food_data_masterlist.fats                         
-    FROM tracking inner join food_data_masterlist on tracking.food_id = food_data_masterlist.id WHERE user_id = ''' + str(current_user.id))
+    FROM tracking inner join food_data_masterlist on tracking.food_id = food_data_masterlist.id WHERE user_id = :user_id'''
 
-    rows = result.fetchall()
-    print(rows)     
+    rows = await database.fetch_all(query = query, values = {'user_id' : current_user.id})   
 
     return(rows)
 
@@ -195,7 +192,7 @@ async def delete_tracked_item(id_to_del: int, current_user: User = Depends(get_c
     if not database.is_connected:
         await database.connect()
     
-    query = tracking.delete().where(tracking.c.id ==id_to_del)
+    query = tracking.delete().where(tracking.c.id == id_to_del)
     await database.execute(query)
 
     return True

@@ -9,6 +9,8 @@ import sqlalchemy
 from sqlalchemy.sql.elements import _as_truncated
 from starlette import status
 
+import datasource
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -26,28 +28,11 @@ from fastapi.security import OAuth2PasswordBearer
 file = Path('settings.json').absolute()
 with open('settings.json') as fin:
     settings = json.load(fin)
-    db_password_secret = settings.get('db_password')
-    db_username_secret = settings.get('db_username')
-    db_database_name_secret = settings.get('db_database_name')
-    db_database_port_secret = settings.get('db_database_port')
-
     SECRET_KEY = settings.get("SECRET_KEY")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Set up the database object
-host_server = 'localhost'
-db_server_port = db_database_port_secret
-database_name = db_database_name_secret
-db_username = db_username_secret
-db_password = db_password_secret
-ssl_mode = 'disable' #prefer
-DATABASE_URL = 'postgresql://{}:{}@{}:{}/{}?sslmode={}'.format(db_username, db_password, host_server, db_server_port, database_name, ssl_mode)
-database = databases.Database(DATABASE_URL)
-metadata = sqlalchemy.MetaData()
-engine = sqlalchemy.create_engine(DATABASE_URL, pool_size=3, max_overflow=0)
-metadata.create_all(engine)
 
 users = sqlalchemy.Table(
     "users",
@@ -59,7 +44,6 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("hashed_password", sqlalchemy.String),
     sqlalchemy.Column("enabled", sqlalchemy.Boolean),
 )
-
 
 class Token(BaseModel):
     access_token: str
@@ -112,8 +96,7 @@ async def read_items(token: str = Depends(oauth2_scheme)):
 
 async def authenticate_user(username: str, password: str):
     query = users.select().where(users.c.username == username)
-    if not database.is_connected:
-        await database.connect()
+    database =  await datasource.get_database() 
     user_record = await database.fetch_all(query)
     user_dict = dict(user_record[0])
     user = UserInDB(**user_dict)
@@ -141,8 +124,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
     query = users.select().where(users.c.username == token_data.username)
-    if not database.is_connected:
-        await database.connect()
+    database =  await datasource.get_database() 
     user_record = await database.fetch_all(query)
 
     user_dict = dict(user_record[0])

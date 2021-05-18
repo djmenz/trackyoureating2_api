@@ -29,7 +29,6 @@ def configure_api_keys():
 	file = Path('settings.json').absolute()
 	with open('settings.json') as fin:
 		settings = json.load(fin)
-		#openweather_service.api_key = settings.get('api_key')
 
 
 def configure_routing():

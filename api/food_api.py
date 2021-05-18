@@ -10,6 +10,7 @@ from sqlalchemy.sql.expression import update
 from starlette import status
 from datetime import date, datetime, time, timedelta
 
+import datasource
 from models.tracking import FoodDataIn, FoodData, TrackingDataIn, TrackingData,TrackingDataMerged
 from sqlalchemy.orm import sessionmaker
 
@@ -24,32 +25,6 @@ metadata = sqlalchemy.MetaData()
 
 from fastapi.security import OAuth2PasswordBearer
 
-db_password_secret: Optional[str] = None
-
-# define database connections
-file = Path('settings.json').absolute()
-with open('settings.json') as fin:
-    settings = json.load(fin)
-    db_password_secret = settings.get('db_password')
-    db_username_secret = settings.get('db_username')
-    db_database_name_secret = settings.get('db_database_name')
-    db_database_port_secret = settings.get('db_database_port')
-
-# Set up the database object
-host_server = 'localhost'
-db_server_port = db_database_port_secret
-database_name = db_database_name_secret
-db_username = db_username_secret
-db_password = db_password_secret
-ssl_mode = 'disable' #prefer
-DATABASE_URL = 'postgresql://{}:{}@{}:{}/{}?sslmode={}'.format(db_username, db_password, host_server, db_server_port, database_name, ssl_mode)
-database = databases.Database(DATABASE_URL)
-metadata = sqlalchemy.MetaData()
-engine = sqlalchemy.create_engine(DATABASE_URL, pool_size=3, max_overflow=0)
-metadata.create_all(engine)
-
-session = sessionmaker()
-session.configure(bind=engine)
     
 food_data_masterlist = sqlalchemy.Table(
     "food_data_masterlist",
@@ -64,7 +39,6 @@ food_data_masterlist = sqlalchemy.Table(
     sqlalchemy.Column("fats", sqlalchemy.Float),
     )
 
-
 tracking = sqlalchemy.Table(
     "tracking",
     metadata,
@@ -76,18 +50,19 @@ tracking = sqlalchemy.Table(
 )    
 
 @router.get("/api/foods", response_model=List[FoodData], status_code = status.HTTP_200_OK)
-async def read_foods(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_foods_for_current_user(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
     print(current_user)
-    
-    # need to get this working
+
+    database =  await datasource.get_database()
     query = food_data_masterlist.select().offset(skip).limit(take)
-    if not database.is_connected:
-        await database.connect()
+
     return await database.fetch_all(query)
 
 	
 @router.post('/api/foods', name='add_food_db_entry', status_code=201, response_model=bool)
 async def create_food_db_entry(food_submitted: FoodDataIn, current_user: User = Depends(get_current_active_user)):
+    database =  await datasource.get_database()
+    
     query = food_data_masterlist.insert().values(
         name=food_submitted.name,
         extended_info=food_submitted.extended_info,
@@ -97,9 +72,7 @@ async def create_food_db_entry(food_submitted: FoodDataIn, current_user: User = 
         carbs=food_submitted.carbs,
         fats=food_submitted.fats,
         )
-
-    if not database.is_connected:
-        await database.connect()    
+  
     await database.execute(query)
     return True
 
@@ -107,11 +80,9 @@ async def create_food_db_entry(food_submitted: FoodDataIn, current_user: User = 
 
 @router.get("/api/foods/{food_id}", response_model=FoodData, status_code = status.HTTP_200_OK)
 async def read_foods(food_id:int, current_user: User = Depends(get_current_active_user)):
+    database =  await datasource.get_database()
 
     query = "SELECT * FROM food_data_masterlist  WHERE id = :food_id"
-    if not database.is_connected:
-        await database.connect()
-
     row = await database.fetch_one(query=query, values = {'food_id':food_id})
     
     return row
@@ -120,8 +91,7 @@ async def read_foods(food_id:int, current_user: User = Depends(get_current_activ
 @router.patch("/api/foods/{food_id}", response_model=FoodData, status_code = status.HTTP_200_OK)
 async def patch_foods(food_id:int, new_attributes: dict, current_user: User = Depends(get_current_active_user)):
 
-    if not database.is_connected:
-        await database.connect()
+    database =  await datasource.get_database()
 
     # Get old item
     query = 'SELECT * FROM food_data_masterlist WHERE id =:food_id '
@@ -147,8 +117,7 @@ async def patch_foods(food_id:int, new_attributes: dict, current_user: User = De
 @router.get("/api/tracking", response_model=List[TrackingData], status_code = status.HTTP_200_OK)
 async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
     print(current_user)
-    if not database.is_connected:
-        await database.connect()    
+    database =  await datasource.get_database()   
 
     query = "SELECT * FROM tracking  WHERE user_id = :user_id"
     rows = await database.fetch_all(query=query, values={"user_id": current_user.id})
@@ -158,8 +127,7 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
 @router.get("/api/trackingmerged", response_model=List[TrackingDataMerged], status_code = status.HTTP_200_OK)
 async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
     print(current_user)
-    if not database.is_connected:
-        await database.connect()    
+    database =  await datasource.get_database()
 
     query = '''SELECT tracking.id, tracking.user_id, tracking.food_id, tracking.quantity, 
     tracking.date, food_data_masterlist.name, food_data_masterlist.calories, food_data_masterlist.protein, 
@@ -173,6 +141,7 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
 
 @router.post('/api/tracking', name='add_food_tracking_entry', status_code=201, response_model=bool)
 async def create_food_db_entry(tracking_submitted: TrackingDataIn, current_user: User = Depends(get_current_active_user)):
+    database =  await datasource.get_database() 
     query = tracking.insert().values(
         user_id=current_user.id,
         food_id=tracking_submitted.food_id,
@@ -180,8 +149,6 @@ async def create_food_db_entry(tracking_submitted: TrackingDataIn, current_user:
         date=tracking_submitted.date,
         )
 
-    if not database.is_connected:
-        await database.connect()    
     await database.execute(query)
     return True
 
@@ -189,9 +156,7 @@ async def create_food_db_entry(tracking_submitted: TrackingDataIn, current_user:
 @router.delete('/api/tracking', name='delete_tracked_item', status_code=201, response_model=bool)
 async def delete_tracked_item(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
-    if not database.is_connected:
-        await database.connect()
-    
+    database =  await datasource.get_database() 
     query = tracking.delete().where(tracking.c.id == id_to_del)
     await database.execute(query)
 

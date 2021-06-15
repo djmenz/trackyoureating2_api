@@ -27,6 +27,7 @@ class TrackingDataIn(BaseModel):
     food_id: int
     quantity: float
     date: date
+    consumed: bool
     
 class TrackingData(BaseModel):
     id: int
@@ -34,6 +35,7 @@ class TrackingData(BaseModel):
     food_id: int
     quantity: float
     date: date
+    consumed: bool
 
 class TrackingDataMerged(BaseModel):
     id: int
@@ -45,4 +47,39 @@ class TrackingDataMerged(BaseModel):
     calories: float
     protein: float
     carbs: float
-    fats: float    
+    fats: float
+    consumed: bool
+
+class TemplatesDataMerged(BaseModel):
+    id: int
+    template_id: int
+    creator_id: int
+    food_id: int
+    quantity: float
+    name: str
+    calories: float
+    protein: float
+    carbs: float
+    fats: float
+
+class TemplateInfoIn(BaseModel):
+    name: str
+    extended_info: str  
+
+class TemplateInfo(BaseModel):
+    id: int
+    creator_id: int
+    name: str
+    extended_info: str
+
+class TemplateDataIn(BaseModel):
+    food_id: int
+    quantity: float
+    template_id: int
+
+class TemplateData(BaseModel):
+    id: int
+    creator_id: int
+    template_id: int
+    food_id: int
+    quantity: float

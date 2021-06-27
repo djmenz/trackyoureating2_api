@@ -143,8 +143,6 @@ async def read_tracking_by_id(food_id:int, current_user: User = Depends(get_curr
 async def patch_tracking(food_id:int, new_attributes: dict, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database()
-
-    print("hello")
     print(food_id)
     # Get old item
     query = 'SELECT * FROM tracking WHERE id =:food_id '
@@ -169,7 +167,6 @@ async def patch_tracking(food_id:int, new_attributes: dict, current_user: User =
 
 @router.get("/api/tracking", response_model=List[TrackingData], status_code = status.HTTP_200_OK)
 async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
-    print(current_user)
     database =  await datasource.get_database()   
 
     query = "SELECT * FROM tracking  WHERE user_id = :user_id"
@@ -179,7 +176,6 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
 
 @router.get("/api/trackingmerged", response_model=List[TrackingDataMerged], status_code = status.HTTP_200_OK)
 async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
-    print(current_user)
     database =  await datasource.get_database()
 
     query = '''SELECT tracking.id, tracking.user_id, tracking.food_id, tracking.quantity, 
@@ -194,7 +190,6 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
 # This needs to be completed and tested to work, currently is just a stub
 @router.get("/api/templatesmerged", response_model=List[TemplatesDataMerged], status_code = status.HTTP_200_OK)
 async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
-    print(current_user)
     database =  await datasource.get_database()
 
     query = '''SELECT template_data.id, template_data.food_id, template_data.quantity, template_data.creator_id, template_data.template_id,
@@ -229,7 +224,7 @@ async def delete_tracked_item(id_to_del: int, current_user: User = Depends(get_c
 
     return True
 
-@router.post('/api/templateinfo', name='add_template_info_entry', status_code=201, response_model=bool)
+@router.post('/api/templateinfo', name='add_template_info_entry', status_code=201, response_model=int)
 async def create_template(tracking_submitted: TemplateInfoIn, current_user: User = Depends(get_current_active_user)):
     database =  await datasource.get_database() 
 
@@ -239,8 +234,8 @@ async def create_template(tracking_submitted: TemplateInfoIn, current_user: User
         extended_info=tracking_submitted.extended_info,
         )
 
-    await database.execute(query)
-    return True
+    res = await database.execute(query)
+    return res
 
 @router.get("/api/templateinfo", response_model=List[TemplateInfo], status_code = status.HTTP_200_OK)
 async def read_templates(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):

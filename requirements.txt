@@ -5,3 +5,6 @@ jinja2
 aiofiles
 jose
 passlib
+passlib[bcrypt]
+psycopg2
+python-multipart

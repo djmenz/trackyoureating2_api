@@ -59,6 +59,12 @@ class User(BaseModel):
     full_name: Optional[str] = None
     enabled: Optional[bool] = None
 
+class NewUser(BaseModel):
+    username: str
+    email: str = None
+    full_name: str = None
+    new_password: str
+
 class UserInDB(User):
     hashed_password: str
 
@@ -84,7 +90,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=120)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -104,6 +110,8 @@ async def authenticate_user(username: str, password: str):
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
+        return False
+    if not user.enabled:
         return False
     return user
 
@@ -137,7 +145,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
-    print(current_user)
+    # print(current_user)
     if not current_user.enabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
@@ -161,5 +169,20 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/users/me/", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+@router.post('/api/users', name='create_new_user', status_code=201, response_model=bool)
+async def create_new_user(new_user: NewUser):
+    database =  await datasource.get_database() 
+
+    query = users.insert().values(
+        username=new_user.username,
+        email=new_user.email,
+        full_name=new_user.full_name,
+        hashed_password=get_password_hash(new_user.new_password),
+        enabled=False        
+        )
+
+    res = await database.execute(query)
+    return True
     
 #import pdb; pdb.set_trace()

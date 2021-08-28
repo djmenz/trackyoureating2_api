@@ -70,7 +70,7 @@ template_data = sqlalchemy.Table(
 
 @router.get("/api/foods", response_model=List[FoodData], status_code = status.HTTP_200_OK)
 async def read_foods_for_current_user(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
-    print(current_user)
+    # print(current_user)
 
     database =  await datasource.get_database()
     query = food_data_masterlist.select().offset(skip).limit(take)
@@ -143,7 +143,7 @@ async def read_tracking_by_id(food_id:int, current_user: User = Depends(get_curr
 async def patch_tracking(food_id:int, new_attributes: dict, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database()
-    print(food_id)
+    # print(food_id)
     # Get old item
     query = 'SELECT * FROM tracking WHERE id =:food_id '
     row = await database.fetch_one(query=query, values = {'food_id': food_id})

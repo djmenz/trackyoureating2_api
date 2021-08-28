@@ -3,8 +3,10 @@ uvicorn
 httpx
 jinja2
 aiofiles
-jose
+python-jose
 passlib
 passlib[bcrypt]
 psycopg2
 python-multipart
+databases
+asyncpg

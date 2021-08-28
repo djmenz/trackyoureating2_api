@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import databases
 import fastapi
+import os
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic.main import BaseModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -25,14 +26,16 @@ metadata = sqlalchemy.MetaData()
 from fastapi.security import OAuth2PasswordBearer
 
 # define database connections
-file = Path('settings.json').absolute()
-with open('settings.json') as fin:
-    settings = json.load(fin)
-    SECRET_KEY = settings.get("SECRET_KEY")
+if os.getenv("TYE2_SECRET_KEY", "ENV_NOT_SET") != "ENV_NOT_SET":
+    host_server = os.getenv("TYE2_SECRET_KEY")
+else:
+    file = Path('settings.json').absolute()
+    with open('settings.json') as fin:
+        settings = json.load(fin)
+        SECRET_KEY = settings.get("TYE2_SECRET_KEY")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 users = sqlalchemy.Table(
     "users",
@@ -90,7 +93,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=120)
+        expire = datetime.utcnow() + timedelta(minutes=10080)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -137,7 +140,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
     user_dict = dict(user_record[0])
     user = UserInDB(**user_dict)
-    print(user)   
+    # print(user)   
 
 
     if user is None:

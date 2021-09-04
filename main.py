@@ -51,6 +51,7 @@ if __name__== '__main__':
 		with open('settings.json') as fin:
 			settings = json.load(fin)
 			deployment_host = settings.get('deployment_host_ip')
+			
 	uvicorn.run(api,port=8000, host=deployment_host) #localhost use 127.0.0.1, 0.0.0.0 for container deployment
 else:
 	configure()

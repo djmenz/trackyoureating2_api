@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic.main import BaseModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import sqlalchemy
-from sqlalchemy.sql.elements import _as_truncated
+# from sqlalchemy.sql.elements import _as_truncated
 from starlette import status
 
 import datasource
@@ -27,7 +27,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 # define database connections
 if os.getenv("TYE2_SECRET_KEY", "ENV_NOT_SET") != "ENV_NOT_SET":
-    host_server = os.getenv("TYE2_SECRET_KEY")
+    SECRET_KEY = os.getenv("TYE2_SECRET_KEY")
 else:
     file = Path('settings.json').absolute()
     with open('settings.json') as fin:

@@ -5,9 +5,10 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic.main import BaseModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import sqlalchemy
-from sqlalchemy.sql.elements import _as_truncated
+# from sqlalchemy.sql.elements import _as_truncated
 from sqlalchemy.sql.expression import update
 from starlette import status
+from sqlalchemy import and_, or_
 from datetime import date, datetime, time, timedelta
 
 import datasource
@@ -219,7 +220,7 @@ async def create_food_db_entry(tracking_submitted: TrackingDataIn, current_user:
 async def delete_tracked_item(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database() 
-    query = tracking.delete().where(tracking.c.id == id_to_del)
+    query = tracking.delete().where(and_(tracking.c.id == id_to_del, tracking.c.user_id == current_user.id))
     await database.execute(query)
 
     return True
@@ -250,7 +251,7 @@ async def read_templates(skip: int = 0, take: int = 20, current_user: User = Dep
 async def delete_template(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database() 
-    query = template_info.delete().where(template_info.c.id == id_to_del)
+    query = template_info.delete().where(and_(template_info.c.id == id_to_del), template_info.c.creator_id == current_user.id)
     await database.execute(query)
 
     return True
@@ -281,8 +282,8 @@ async def read_template_data(skip: int = 0, take: int = 20, current_user: User =
 @router.delete('/api/templatedata', name='delete', status_code=201, response_model=bool)
 async def delete_tracked_template_item(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
-    database =  await datasource.get_database() 
-    query = template_data.delete().where(template_data.c.id == id_to_del)
+    database =  await datasource.get_database()
+    query = template_info.delete().where(and_(template_data.c.id == id_to_del), template_data.c.creator_id == current_user.id)
     await database.execute(query)
 
     return True

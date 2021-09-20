@@ -70,11 +70,11 @@ template_data = sqlalchemy.Table(
 ) 
 
 @router.get("/api/foods", response_model=List[FoodData], status_code = status.HTTP_200_OK)
-async def read_foods_for_current_user(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_foods_for_current_user(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     # print(current_user)
 
     database =  await datasource.get_database()
-    query = food_data_masterlist.select().offset(skip).limit(take)
+    query = food_data_masterlist.select().offset(skip)
 
     return await database.fetch_all(query)
 
@@ -167,7 +167,7 @@ async def patch_tracking(food_id:int, new_attributes: dict, current_user: User =
 
 
 @router.get("/api/tracking", response_model=List[TrackingData], status_code = status.HTTP_200_OK)
-async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_tracking(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     database =  await datasource.get_database()   
 
     query = "SELECT * FROM tracking  WHERE user_id = :user_id"
@@ -176,7 +176,7 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
     return(rows)
 
 @router.get("/api/trackingmerged", response_model=List[TrackingDataMerged], status_code = status.HTTP_200_OK)
-async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_tracking(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     database =  await datasource.get_database()
 
     query = '''SELECT tracking.id, tracking.user_id, tracking.food_id, tracking.quantity, 
@@ -190,7 +190,7 @@ async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depe
 
 # This needs to be completed and tested to work, currently is just a stub
 @router.get("/api/templatesmerged", response_model=List[TemplatesDataMerged], status_code = status.HTTP_200_OK)
-async def read_tracking(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_tracking(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     database =  await datasource.get_database()
 
     query = '''SELECT template_data.id, template_data.food_id, template_data.quantity, template_data.creator_id, template_data.template_id,
@@ -239,7 +239,7 @@ async def create_template(tracking_submitted: TemplateInfoIn, current_user: User
     return res
 
 @router.get("/api/templateinfo", response_model=List[TemplateInfo], status_code = status.HTTP_200_OK)
-async def read_templates(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_templates(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     
     database =  await datasource.get_database()   
     query = "SELECT * FROM template_info WHERE creator_id = :creator_id"
@@ -271,7 +271,7 @@ async def create_template_data_entry(submitted: TemplateDataIn, current_user: Us
     return True
 
 @router.get("/api/templatedata", response_model=List[TemplateData], status_code = status.HTTP_200_OK)
-async def read_template_data(skip: int = 0, take: int = 20, current_user: User = Depends(get_current_active_user)):
+async def read_template_data(skip: int = 0, current_user: User = Depends(get_current_active_user)):
     
     database =  await datasource.get_database()   
     query = "SELECT * FROM template_data  WHERE creator_id = :creator_id"

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import databases
 import fastapi
 import os
+import boto3
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic.main import BaseModel
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -28,11 +29,13 @@ from fastapi.security import OAuth2PasswordBearer
 # define database connections
 if os.getenv("TYE2_SECRET_KEY", "ENV_NOT_SET") != "ENV_NOT_SET":
     SECRET_KEY = os.getenv("TYE2_SECRET_KEY")
+    SNS_TOPIC = os.getenv("SNS_TOPIC")
 else:
     file = Path('settings.json').absolute()
     with open('settings.json') as fin:
         settings = json.load(fin)
         SECRET_KEY = settings.get("TYE2_SECRET_KEY")
+        SNS_TOPIC = settings.get("SNS_TOPIC")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
@@ -186,6 +189,18 @@ async def create_new_user(new_user: NewUser):
         )
 
     res = await database.execute(query)
+    
+    try:
+        msg_client = boto3.client('sns',region_name='us-west-2')
+        SNS_TOPIC = 'crypto-news-daily'
+        topic = msg_client.create_topic(Name=SNS_TOPIC)
+        topic_arn = topic['TopicArn']  # get its Amazon Resource Name
+        mail_subject = 'TYE2 new user created'
+        email_body = f"new user created: {new_user.username} {new_user.email}"
+        msg_client.publish(TopicArn=topic_arn,Message=email_body,Subject=mail_subject)
+    except:
+        pass
+
     return True
     
 #import pdb; pdb.set_trace()

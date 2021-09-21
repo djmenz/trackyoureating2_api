@@ -251,7 +251,7 @@ async def read_templates(skip: int = 0, current_user: User = Depends(get_current
 async def delete_template(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database() 
-    query = template_info.delete().where(and_(template_info.c.id == id_to_del), template_info.c.creator_id == current_user.id)
+    query = template_info.delete().where(and_(template_info.c.id == id_to_del, template_info.c.creator_id == current_user.id))
     await database.execute(query)
 
     return True
@@ -283,7 +283,7 @@ async def read_template_data(skip: int = 0, current_user: User = Depends(get_cur
 async def delete_tracked_template_item(id_to_del: int, current_user: User = Depends(get_current_active_user)):
 
     database =  await datasource.get_database()
-    query = template_info.delete().where(and_(template_data.c.id == id_to_del), template_data.c.creator_id == current_user.id)
+    query = template_data.delete().where(and_(template_data.c.id == id_to_del, template_data.c.creator_id == current_user.id))
     await database.execute(query)
 
     return True
